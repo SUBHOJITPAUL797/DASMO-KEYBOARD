@@ -77,6 +77,7 @@ import helium314.keyboard.latin.utils.SubtypeLocaleUtils;
 import helium314.keyboard.latin.utils.SubtypeSettings;
 import helium314.keyboard.latin.utils.SubtypeState;
 import helium314.keyboard.latin.utils.ToolbarMode;
+import helium314.keyboard.latin.voice.VoiceTranslateManager;
 import helium314.keyboard.settings.SettingsActivity2;
 import kotlin.Unit;
 
@@ -137,6 +138,7 @@ public class LatinIME extends InputMethodService implements
     private GestureConsumer mGestureConsumer = GestureConsumer.NULL_GESTURE_CONSUMER;
 
     private final ClipboardHistoryManager mClipboardHistoryManager = new ClipboardHistoryManager(this);
+    private final VoiceTranslateManager mVoiceTranslateManager = new VoiceTranslateManager(this);
 
     public static final class UIHandler extends LeakGuardHandlerWrapper<LatinIME> {
         private static final int MSG_UPDATE_SHIFT_STATE = 0;
@@ -614,6 +616,7 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onDestroy() {
+        mVoiceTranslateManager.onDestroy();
         mClipboardHistoryManager.onDestroy();
         mDictionaryFacilitator.closeDictionaries();
         mSettings.onDestroy();
@@ -945,6 +948,9 @@ public class LatinIME extends InputMethodService implements
     void onFinishInputViewInternal(final boolean finishingInput) {
         super.onFinishInputView(finishingInput);
         Log.i(TAG, "onFinishInputView");
+        if (mVoiceTranslateManager != null) {
+            mVoiceTranslateManager.onInputViewFinished();
+        }
         cleanupInternalStateForFinishInput();
     }
 
@@ -1243,6 +1249,10 @@ public class LatinIME extends InputMethodService implements
     // This method is public for testability of LatinIME, but also in the future it should
     // completely replace #onCodeInput.
     public void onEvent(@NonNull final Event event) {
+        if (KeyCode.VOICE_TRANSLATE == event.getKeyCode()) {
+            toggleVoiceTranslate();
+            return;
+        }
         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
             mRichImm.switchToShortcutIme(this);
         }
@@ -1307,6 +1317,20 @@ public class LatinIME extends InputMethodService implements
         return null != mSuggestionStripView;
     }
 
+    public SuggestionStripView getSuggestionStripView() {
+        return mSuggestionStripView;
+    }
+
+    public void toggleVoiceTranslate() {
+        if (mVoiceTranslateManager != null) {
+            mVoiceTranslateManager.toggle();
+        }
+    }
+
+    public boolean isVoiceTranslateActive() {
+        return mVoiceTranslateManager != null && mVoiceTranslateManager.isActive();
+    }
+
     private void setSuggestedWords(SuggestedWords suggestedWords) {
         SettingsValues currentSettingsValues = mSettings.getCurrent();
         mInputLogic.setSuggestedWords(suggestedWords);
@@ -1337,6 +1361,9 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void setSuggestions(final SuggestedWords suggestedWords) {
+        if (isVoiceTranslateActive()) {
+            return;
+        }
         if (suggestedWords.isEmpty()) {
             // avoids showing clipboard suggestion when starting gesture typing
             // should be fine, as there will be another suggestion in a few ms
@@ -1388,6 +1415,9 @@ public class LatinIME extends InputMethodService implements
     // and there is a selection of text or it's the start of a line.
     @Override
     public void setNeutralSuggestionStrip() {
+        if (isVoiceTranslateActive()) {
+            return;
+        }
         final SettingsValues currentSettings = mSettings.getCurrent();
         if (tryShowClipboardSuggestion()) {
             // clipboard suggestion has been set

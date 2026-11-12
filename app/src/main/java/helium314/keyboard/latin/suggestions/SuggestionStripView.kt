@@ -276,6 +276,25 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         if (Settings.getValues().mAutoHideToolbar) setToolbarVisibility(false)
     }
 
+    fun setVoiceTranslateView(view: View?) {
+        clear()
+        isExternalSuggestionVisible = true
+        pinnedKeys.isVisible = false
+        toolbarExpandKey.isVisible = false
+        if (view != null) {
+            val parent = view.parent as? ViewGroup
+            parent?.removeView(view)
+            suggestionsStrip.addView(view)
+        }
+        if (Settings.getValues().mAutoHideToolbar) setToolbarVisibility(false)
+    }
+
+    fun removeVoiceTranslateView() {
+        clear()
+        isExternalSuggestionVisible = false
+        updateKeys()
+    }
+
     fun setMoreSuggestionsHeight(remainingHeight: Int) {
         layoutHelper.setMoreSuggestionsHeight(remainingHeight)
     }

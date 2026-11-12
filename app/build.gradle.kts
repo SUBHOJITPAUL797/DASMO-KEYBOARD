@@ -66,7 +66,7 @@ android {
             }
             variant.outputs.forEach { output ->
                 if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
-                    output.outputFileName = "HeliBoard_${defaultConfig.versionName}-${variant.buildType}.apk"
+                    output.outputFileName = "DASMO_Keyboard_${defaultConfig.versionName}-${variant.buildType}.apk"
                 }
             }
         }
@@ -83,7 +83,7 @@ android {
             path = File("src/main/jni/Android.mk")
         }
     }
-    ndkVersion = "28.0.13004108"
+    ndkVersion = "28.2.13676358"
 
     packaging {
         jniLibs {

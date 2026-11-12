@@ -613,7 +613,7 @@ private fun BottomBar(hasWords: Boolean, onDeleted: () -> Unit) {
             appendLink("YouTube", Links.GESTURE_DATA_VIDEO_YOUTUBE)
             appendLine()
             append("• ")
-            appendLink("HeliBoard wiki", Links.GESTURE_DATA_WIKI)
+            appendLink("DASMO Keyboard wiki", Links.GESTURE_DATA_WIKI)
             appendLine()
             appendLine()
 
@@ -625,7 +625,7 @@ private fun BottomBar(hasWords: Boolean, onDeleted: () -> Unit) {
             appendLink("YouTube", Links.BACKGROUND_GESTURE_DATA_VIDEO_YOUTUBE)
             appendLine()
             append("• ")
-            appendLink("HeliBoard wiki", Links.BACKGROUND_GESTURE_DATA_WIKI)
+            appendLink("DASMO Keyboard wiki", Links.BACKGROUND_GESTURE_DATA_WIKI)
             appendLine()
             appendLine()
 

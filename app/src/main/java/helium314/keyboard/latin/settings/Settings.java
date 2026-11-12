@@ -554,10 +554,12 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     }
 
     public Integer getCustomToolbarKeyCode(ToolbarKey key) {
+        if (mPrefs == null) return null;
         return ToolbarUtilsKt.getCustomKeyCode(key, mPrefs);
     }
 
     public Integer getCustomToolbarLongpressCode(ToolbarKey key) {
+        if (mPrefs == null) return null;
         return ToolbarUtilsKt.getCustomLongpressKeyCode(key, mPrefs);
     }
 
