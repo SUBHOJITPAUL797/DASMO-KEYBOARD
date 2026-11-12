@@ -117,6 +117,7 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     private val pinnedKeys: ViewGroup = findViewById(R.id.pinned_keys)
     private val suggestionsStrip: ViewGroup = findViewById(R.id.suggestions_strip)
     private val toolbarExpandKey = findViewById<ImageButton>(R.id.suggestions_strip_toolbar_key)
+    private val suggestionsStripWrapper: View = findViewById(R.id.suggestions_strip_wrapper)
     private val incognitoIcon = KeyboardIconsSet.instance.getNewDrawable(ToolbarKey.INCOGNITO.name, context)
     private val toolbarArrowIcon = KeyboardIconsSet.instance.getNewDrawable(KeyboardIconsSet.NAME_TOOLBAR_KEY, context)
     private val defaultToolbarBackground: Drawable = toolbarExpandKey.background
@@ -279,19 +280,29 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
     fun setVoiceTranslateView(view: View?) {
         clear()
         isExternalSuggestionVisible = true
-        pinnedKeys.isVisible = false
-        toolbarExpandKey.isVisible = false
+        suggestionsStripWrapper.isGone = true
         if (view != null) {
             val parent = view.parent as? ViewGroup
             parent?.removeView(view)
-            suggestionsStrip.addView(view)
+            val lp = RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
+                RelativeLayout.LayoutParams.MATCH_PARENT
+            )
+            addView(view, lp)
         }
-        if (Settings.getValues().mAutoHideToolbar) setToolbarVisibility(false)
     }
 
     fun removeVoiceTranslateView() {
         clear()
         isExternalSuggestionVisible = false
+        for (i in childCount - 1 downTo 0) {
+            val child = getChildAt(i)
+            if (child is helium314.keyboard.latin.voice.VoiceTranslateBarView) {
+                removeViewAt(i)
+            }
+        }
+        suggestionsStripWrapper.isVisible = true
+        setToolbarVisibility(false)
         updateKeys()
     }
 

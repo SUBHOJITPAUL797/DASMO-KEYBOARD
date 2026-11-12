@@ -6,21 +6,16 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.LayoutInflater
-import android.view.View
-import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.core.graphics.ColorUtils
-import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.ColorType
-import helium314.keyboard.latin.common.Colors
 import helium314.keyboard.latin.databinding.VoiceTranslateBarBinding
 import helium314.keyboard.latin.settings.Settings
 
 /**
- * Custom compact translation strip view that replaces SuggestionStripView when voice translation is active.
- * Houses the [X] close button, Bengali source badge, direction arrow, target language toggle [ EN | HI ],
- * microphone button with active listening state, and live transcript / status text.
+ * Custom clean, uncluttered translation strip view that replaces SuggestionStripView when voice translation is active.
+ * Houses the [X] close button, unified sleek language selector pill [ বাংলা ➔ English ▼ ],
+ * real-time status/transcript display, and a modern prominent microphone button with active listening animation.
  */
 class VoiceTranslateBarView @JvmOverloads constructor(
     context: Context,
@@ -76,40 +71,23 @@ class VoiceTranslateBarView @JvmOverloads constructor(
 
         binding.tvSourceLang.setTextColor(normalTextColor)
         binding.tvDirectionArrow.setTextColor(inactiveTextColor)
-        binding.tvTargetDivider.setTextColor(inactiveTextColor)
+        binding.tvTargetLang.setTextColor(activeAccentColor)
+        binding.tvTargetDropdown.setTextColor(inactiveTextColor)
         binding.tvStatusTranscript.setTextColor(normalTextColor)
 
-        // Subtle badges background
-        val badgeBg = GradientDrawable().apply {
+        // Sleek Language Selector Pill background
+        val pillBg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = 24f
+            cornerRadius = 28f
             setColor(ColorUtils.setAlphaComponent(normalTextColor, 24))
-            setStroke(1, ColorUtils.setAlphaComponent(normalTextColor, 40))
+            setStroke(1, ColorUtils.setAlphaComponent(normalTextColor, 48))
         }
-        binding.tvSourceLang.background = badgeBg
-
-        val toggleBg = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 24f
-            setColor(ColorUtils.setAlphaComponent(normalTextColor, 24))
-            setStroke(1, ColorUtils.setAlphaComponent(normalTextColor, 40))
-        }
-        binding.btnTargetToggle.background = toggleBg
+        binding.btnTargetToggle.background = pillBg
     }
 
     fun updateTargetLanguage(targetLang: String) {
         val isEnglish = targetLang.equals("en", ignoreCase = true)
-        if (isEnglish) {
-            binding.tvTargetEn.setTextColor(activeAccentColor)
-            binding.tvTargetEn.alpha = 1.0f
-            binding.tvTargetHi.setTextColor(inactiveTextColor)
-            binding.tvTargetHi.alpha = 0.6f
-        } else {
-            binding.tvTargetHi.setTextColor(activeAccentColor)
-            binding.tvTargetHi.alpha = 1.0f
-            binding.tvTargetEn.setTextColor(inactiveTextColor)
-            binding.tvTargetEn.alpha = 0.6f
-        }
+        binding.tvTargetLang.text = if (isEnglish) "English" else "हिन्दी"
     }
 
     fun setListeningState(isListening: Boolean) {
