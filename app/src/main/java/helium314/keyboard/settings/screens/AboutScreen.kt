@@ -45,6 +45,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import androidx.core.content.edit
 import helium314.keyboard.latin.utils.IntentUtils
+import helium314.keyboard.latin.update.AppUpdateManager
 import java.util.Locale
 
 @Composable
@@ -54,6 +55,7 @@ fun AboutScreen(
     val items = listOf(
         SettingsWithoutKey.APP,
         SettingsWithoutKey.VERSION,
+        SettingsWithoutKey.CHECK_FOR_UPDATES,
         SettingsWithoutKey.LICENSE,
         SettingsWithoutKey.HIDDEN_FEATURES,
         SettingsWithoutKey.GITHUB_WIKI,
@@ -93,6 +95,18 @@ fun createAboutSettings(context: Context) = listOf(
                 Toast.makeText(ctx, R.string.prefs_debug_settings_enabled, Toast.LENGTH_LONG).show()
             },
             icon = R.drawable.ic_settings_about_version
+        )
+    },
+    Setting(context, SettingsWithoutKey.CHECK_FOR_UPDATES, R.string.check_for_updates, R.string.check_for_updates_summary) { setting ->
+        val ctx = LocalContext.current
+        Preference(
+            name = setting.title,
+            description = stringResource(R.string.check_for_updates_summary, BuildConfig.VERSION_NAME),
+            onClick = {
+                val activity = ctx.getActivity() ?: return@Preference
+                AppUpdateManager.checkForUpdates(activity)
+            },
+            icon = R.drawable.ic_settings_about_update
         )
     },
     Setting(context, SettingsWithoutKey.LICENSE, R.string.license, R.string.gnu_gpl) {

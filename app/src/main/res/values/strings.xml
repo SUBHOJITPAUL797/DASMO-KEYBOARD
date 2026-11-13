@@ -1016,6 +1016,22 @@ New dictionary:
     <string name="voice_translate_error_generic">Recognition error (%1$d).</string>
     <string name="voice_translate_error_translation">Translation failed. Please retry.</string>
 
+    <!-- In-app update strings -->
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="check_for_updates_summary">Current version %s</string>
+    <string name="update_available">Update Available (%s)</string>
+    <string name="update_latest">You have the latest version (%s)</string>
+    <string name="update_downloading">Downloading update… %d%%</string>
+    <string name="update_install">Download &amp; Install</string>
+    <string name="update_error">Failed to check for updates: %s</string>
+    <string name="update_permission_required">Permission to install packages is required to update the app</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_download_failed">Failed to download update: %s</string>
+    <string name="update_permission_dialog_title">Permission Required</string>
+    <string name="update_permission_dialog_msg">To install updates, DASMO Keyboard needs permission to install apps. Please allow \'Install unknown apps\' in Settings.</string>
+    <string name="update_settings_button">Settings</string>
+    <string name="update_no_apk_found">No APK found in the latest release</string>
+
 
     <!-- gesture data gathering, new strings for normal use should go above -->
 
