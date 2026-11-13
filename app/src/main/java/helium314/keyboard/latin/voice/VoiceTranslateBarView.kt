@@ -6,16 +6,19 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.LinearLayout
 import androidx.core.graphics.ColorUtils
+import androidx.core.view.isVisible
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.databinding.VoiceTranslateBarBinding
 import helium314.keyboard.latin.settings.Settings
 
 /**
  * Custom clean, uncluttered translation strip view that replaces SuggestionStripView when voice translation is active.
- * Houses the [X] close button, unified sleek language selector pill [ বাংলা ➔ English ▼ ],
- * real-time status/transcript display, and a modern prominent microphone button with active listening animation.
+ * Supports both Voice Translation (Speech-to-Text) and Typing Translation (Type-to-Translate).
+ * Houses the [X] close button, unified language selector pill [ বাংলা ➔ English ▼ ],
+ * real-time status/transcript display, [➔] Translate button for typed text, and microphone button.
  */
 class VoiceTranslateBarView @JvmOverloads constructor(
     context: Context,
@@ -27,7 +30,10 @@ class VoiceTranslateBarView @JvmOverloads constructor(
 
     var onCloseClickListener: (() -> Unit)? = null
     var onTargetToggleClickListener: (() -> Unit)? = null
+    var onTargetToggleLongClickListener: (() -> Boolean)? = null
     var onMicClickListener: (() -> Unit)? = null
+    var onTranslateTextClickListener: (() -> Unit)? = null
+    var onStatusTranscriptClickListener: (() -> Unit)? = null
 
     private var activeAccentColor: Int = Color.parseColor("#1A73E8")
     private var normalTextColor: Int = Color.WHITE
@@ -46,8 +52,20 @@ class VoiceTranslateBarView @JvmOverloads constructor(
             onTargetToggleClickListener?.invoke()
         }
 
+        binding.btnTargetToggle.setOnLongClickListener {
+            onTargetToggleLongClickListener?.invoke() ?: false
+        }
+
         binding.btnMic.setOnClickListener {
             onMicClickListener?.invoke()
+        }
+
+        binding.btnTranslateText.setOnClickListener {
+            onTranslateTextClickListener?.invoke()
+        }
+
+        binding.tvStatusTranscript.setOnClickListener {
+            onStatusTranscriptClickListener?.invoke()
         }
 
         // Enable marquee scrolling for status text
@@ -83,11 +101,24 @@ class VoiceTranslateBarView @JvmOverloads constructor(
             setStroke(1, ColorUtils.setAlphaComponent(normalTextColor, 48))
         }
         binding.btnTargetToggle.background = pillBg
+
+        // Translate Text Button background
+        val translateBg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(activeAccentColor)
+        }
+        binding.btnTranslateText.background = translateBg
+        binding.btnTranslateText.setColorFilter(Color.WHITE)
     }
 
     fun updateTargetLanguage(targetLang: String) {
         val isEnglish = targetLang.equals("en", ignoreCase = true)
         binding.tvTargetLang.text = if (isEnglish) "English" else "हिन्दी"
+    }
+
+    fun updateLanguagePair(sourceName: String, targetName: String) {
+        binding.tvSourceLang.text = sourceName
+        binding.tvTargetLang.text = targetName
     }
 
     fun setListeningState(isListening: Boolean) {
@@ -107,6 +138,10 @@ class VoiceTranslateBarView @JvmOverloads constructor(
             binding.btnMic.background = idleMicBg
             binding.btnMic.setColorFilter(normalTextColor)
         }
+    }
+
+    fun setTranslateButtonVisible(visible: Boolean) {
+        binding.btnTranslateText.isVisible = visible
     }
 
     fun setStatusText(text: CharSequence) {

@@ -32,7 +32,7 @@ class SpeechRecognitionManager(
     var isListening: Boolean = false
         private set
 
-    fun startListening() {
+    fun startListening(sourceLanguage: String = "bn") {
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             listener.onError(
                 SpeechRecognizer.ERROR_CLIENT,
@@ -88,11 +88,17 @@ class SpeechRecognitionManager(
                 override fun onEvent(eventType: Int, params: Bundle?) {}
             })
 
+            val (primaryLocale, extraLocales) = when (sourceLanguage) {
+                "hi" -> "hi-IN" to arrayOf("hi-IN")
+                "en" -> "en-IN" to arrayOf("en-IN", "en-US")
+                else -> "bn-IN" to arrayOf("bn-BD", "bn-IN")
+            }
+
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-IN")
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "bn-IN")
-                putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("bn-BD", "bn-IN"))
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, primaryLocale)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, primaryLocale)
+                putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", extraLocales)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)

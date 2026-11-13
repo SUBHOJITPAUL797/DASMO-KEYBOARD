@@ -100,19 +100,28 @@ object TranslationService {
         val trimmed = jsonString.trim()
         val jsonArray = JSONArray(trimmed)
         if (jsonArray.length() == 0) return ""
-        val firstItem = jsonArray.get(0)
-        return when (firstItem) {
-            is String -> firstItem
-            is JSONArray -> {
-                val sb = StringBuilder()
-                for (i in 0 until firstItem.length()) {
-                    val sub = firstItem.get(i)
-                    if (sub is String) sb.append(sub)
+        val sb = StringBuilder()
+        for (i in 0 until jsonArray.length()) {
+            val item = jsonArray.get(i)
+            when (item) {
+                is String -> sb.append(item)
+                is JSONArray -> {
+                    if (item.length() > 0) {
+                        val first = item.get(0)
+                        if (first is String) {
+                            sb.append(first)
+                        } else if (first is JSONArray) {
+                            for (j in 0 until first.length()) {
+                                val sub = first.get(j)
+                                if (sub is String) sb.append(sub)
+                            }
+                        }
+                    }
                 }
-                sb.toString()
+                else -> sb.append(item.toString())
             }
-            else -> firstItem.toString()
         }
+        return sb.toString()
     }
 
     private fun parseGoogleApisResponse(jsonString: String): String {

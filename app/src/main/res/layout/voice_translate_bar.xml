@@ -67,7 +67,7 @@
             android:textSize="8sp" />
     </LinearLayout>
 
-    <!-- Center Live Status / Translation Transcript -->
+    <!-- Center Live Status / Translation Transcript / Clickable Preview -->
     <TextView
         android:id="@+id/tv_status_transcript"
         android:layout_width="0dp"
@@ -75,15 +75,30 @@
         android:layout_weight="1"
         android:gravity="center_vertical|start"
         android:layout_marginStart="2dp"
-        android:layout_marginEnd="6dp"
+        android:layout_marginEnd="4dp"
         android:singleLine="true"
         android:ellipsize="marquee"
         android:marqueeRepeatLimit="marquee_forever"
         android:scrollHorizontally="true"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?android:attr/selectableItemBackground"
         android:text="@string/voice_translate_status_tap_mic"
         android:textSize="12.5sp" />
 
-    <!-- Prominent Modern Microphone Button -->
+    <!-- [➔] Translate Typed Text Button (appears when text is typed in chat) -->
+    <ImageButton
+        android:id="@+id/btn_translate_text"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="4dp"
+        android:visibility="gone"
+        android:background="@drawable/voice_mic_button_background"
+        android:src="@drawable/ic_arrow_right"
+        android:contentDescription="@string/translate_text_button_desc"
+        android:scaleType="centerInside" />
+
+    <!-- [🎙️] Prominent Modern Microphone Button -->
     <ImageButton
         android:id="@+id/btn_mic"
         android:layout_width="36dp"

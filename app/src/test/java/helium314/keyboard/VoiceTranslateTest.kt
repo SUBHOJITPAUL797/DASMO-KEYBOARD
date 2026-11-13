@@ -22,10 +22,19 @@ class VoiceTranslateTest {
     }
 
     @Test
-    fun testTargetLanguagesConstants() {
-        assertEquals("en", VoiceTranslateManager.TARGET_EN)
-        assertEquals("hi", VoiceTranslateManager.TARGET_HI)
-        assertEquals("pref_voice_translate_target_lang", VoiceTranslateManager.PREF_VOICE_TRANSLATE_TARGET)
+    fun testSupportedTranslationPairs() {
+        val pairs = VoiceTranslateManager.SUPPORTED_PAIRS
+        assertTrue(pairs.isNotEmpty())
+        assertEquals("bn", pairs[0].sourceCode)
+        assertEquals("en", pairs[0].targetCode)
+        assertEquals("বাংলা ➔ English", pairs[0].displayLabel)
+
+        // Check Hindi pair
+        assertTrue(pairs.any { it.sourceCode == "bn" && it.targetCode == "hi" })
+        // Check English to Bengali pair
+        assertTrue(pairs.any { it.sourceCode == "en" && it.targetCode == "bn" })
+
+        assertEquals("pref_translate_pair_index", VoiceTranslateManager.PREF_TRANSLATE_PAIR_INDEX)
     }
 
     @Test

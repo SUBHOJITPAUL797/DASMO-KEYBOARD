@@ -1000,11 +1000,15 @@ New dictionary:
     <string name="voice_translate_source_bn">বাংলা (BN)</string>
     <string name="voice_translate_target_en">EN</string>
     <string name="voice_translate_target_hi">HI</string>
-    <string name="voice_translate_status_tap_mic">Tap mic to speak Bengali</string>
+    <string name="voice_translate_target_bn">BN</string>
+    <string name="voice_translate_status_tap_mic">Type or tap mic to translate</string>
     <string name="voice_translate_status_listening">Listening...</string>
     <string name="voice_translate_status_translating">Translating...</string>
-    <string name="voice_translate_close">Close Voice Translate</string>
+    <string name="voice_translate_close">Close Translate</string>
     <string name="voice_translate_mic">Voice input</string>
+    <string name="translate_text_button_desc">Translate typed text</string>
+    <string name="voice_translate_status_translated">✓ Translated</string>
+    <string name="voice_translate_dialog_title">Select Translation Direction</string>
     <string name="voice_translate_permission_required">Microphone permission required. Tap mic to grant.</string>
     <string name="voice_translate_error_speech_timeout">Speech timeout. Tap mic to retry.</string>
     <string name="voice_translate_error_no_match">No speech heard. Try again.</string>
