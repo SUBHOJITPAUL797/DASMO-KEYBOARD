@@ -91,6 +91,7 @@ class SpeechRecognitionManager(
             val (primaryLocale, extraLocales) = when (sourceLanguage) {
                 "hi" -> "hi-IN" to arrayOf("hi-IN")
                 "en" -> "en-IN" to arrayOf("en-IN", "en-US")
+                "benglish" -> "bn-IN" to arrayOf("bn-BD", "bn-IN", "en-IN")
                 else -> "bn-IN" to arrayOf("bn-BD", "bn-IN")
             }
 

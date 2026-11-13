@@ -348,6 +348,7 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
 
     private fun resolveSourceLang(text: String, defaultSource: String): String {
         return when {
+            defaultSource == "benglish" -> "benglish"
             text.any { it in '\u0980'..'\u09FF' } -> "bn" // Bengali script
             text.any { it in '\u0900'..'\u097F' } -> "hi" // Devanagari (Hindi) script
             text.all { it.isWhitespace() || it.code in 0x00..0x7F } && defaultSource != "en" -> "auto"
@@ -399,6 +400,51 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
 
     private fun translateAndCommitSpeech(speechText: String) {
         val pair = currentPair
+        if (pair.targetCode == "bn") {
+            val hasBengali = speechText.any { it in '\u0980'..'\u09FF' }
+            val hasLatin = speechText.any { it in 'a'..'z' || it in 'A'..'Z' }
+
+            // If speech contains Bengali script, do NOT translate — commit directly to active field!
+            if (hasBengali && !hasLatin) {
+                barView?.setStatusText("✓ $speechText")
+                latinIME.onTextInput(speechText)
+                scheduleResetStatus(3000)
+                return
+            }
+
+            // If speech contains Latin characters (Benglish / Banglish), transliterate to Bengali script!
+            if (hasLatin) {
+                scope.launch {
+                    val transliterateResult = TranslationService.transliterateBenglish(speechText)
+                    transliterateResult.fold(
+                        onSuccess = { bengaliText ->
+                            val textToCommit = if (bengaliText.isNotBlank()) bengaliText else speechText
+                            barView?.setStatusText("✓ $textToCommit")
+                            latinIME.onTextInput(textToCommit)
+                            scheduleResetStatus(3000)
+                        },
+                        onFailure = { error ->
+                            Log.e(TAG, "Speech Benglish transliteration error", error)
+                            // Fallback to translation service or commit speech text
+                            val fallback = TranslationService.translate(speechText, "benglish", "bn")
+                            val fallbackText = fallback.getOrNull()?.takeIf { it.isNotBlank() } ?: speechText
+                            barView?.setStatusText("✓ $fallbackText")
+                            latinIME.onTextInput(fallbackText)
+                            scheduleResetStatus(3000)
+                        }
+                    )
+                }
+                return
+            }
+
+            // Neither Bengali nor Latin (e.g. numbers, emojis, punctuation)
+            barView?.setStatusText("✓ $speechText")
+            latinIME.onTextInput(speechText)
+            scheduleResetStatus(3000)
+            return
+        }
+
+        // Translation for other target languages (e.g. bn -> en, bn -> hi, etc.)
         val effectiveSource = resolveSourceLang(speechText, pair.sourceCode)
         scope.launch {
             val result = TranslationService.translate(
@@ -475,6 +521,7 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
         const val PREF_TRANSLATE_PAIR_INDEX = "pref_translate_pair_index"
 
         val SUPPORTED_PAIRS = listOf(
+            TranslationPair("benglish", "Benglish", "bn", "বাংলা"),
             TranslationPair("bn", "বাংলা", "en", "English"),
             TranslationPair("bn", "বাংলা", "hi", "हिन्दी"),
             TranslationPair("en", "English", "bn", "বাংলা"),

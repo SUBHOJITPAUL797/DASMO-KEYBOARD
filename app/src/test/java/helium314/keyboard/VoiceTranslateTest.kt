@@ -11,7 +11,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class VoiceTranslateTest {
 
     @Test
@@ -25,11 +28,12 @@ class VoiceTranslateTest {
     fun testSupportedTranslationPairs() {
         val pairs = VoiceTranslateManager.SUPPORTED_PAIRS
         assertTrue(pairs.isNotEmpty())
-        assertEquals("bn", pairs[0].sourceCode)
-        assertEquals("en", pairs[0].targetCode)
-        assertEquals("বাংলা ➔ English", pairs[0].displayLabel)
+        assertEquals("benglish", pairs[0].sourceCode)
+        assertEquals("bn", pairs[0].targetCode)
+        assertEquals("Benglish ➔ বাংলা", pairs[0].displayLabel)
 
-        // Check Hindi pair
+        // Check Bengali to English & Hindi pairs
+        assertTrue(pairs.any { it.sourceCode == "bn" && it.targetCode == "en" })
         assertTrue(pairs.any { it.sourceCode == "bn" && it.targetCode == "hi" })
         // Check English to Bengali pair
         assertTrue(pairs.any { it.sourceCode == "en" && it.targetCode == "bn" })
@@ -42,5 +46,57 @@ class VoiceTranslateTest {
         val result = TranslationService.translate("", "bn", "en")
         assertTrue(result.isSuccess)
         assertEquals("", result.getOrNull())
+
+        val bengResult = TranslationService.transliterateBenglish("")
+        assertTrue(bengResult.isSuccess)
+        assertEquals("", bengResult.getOrNull())
+    }
+
+    @Test
+    fun testTransliterateBenglishTumiKemonAcho() = runBlocking {
+        val result = TranslationService.transliterateBenglish("tumi kemon acho")
+        assertTrue(result.isSuccess)
+        val text = result.getOrNull()
+        assertNotNull(text)
+        assertTrue("Expected Bengali text containing তুমি কেমন আছো, got: $text", text!!.startsWith("তুমি কেমন আছ"))
+    }
+
+    @Test
+    fun testTransliterateBenglishExactWordMapping() = runBlocking {
+        // User requirement: Exact 1:1 transliteration without inserting missing words
+        val res1 = TranslationService.transliterateBenglish("ki korcho")
+        assertTrue(res1.isSuccess)
+        assertEquals("কি করছো", res1.getOrNull())
+
+        val res2 = TranslationService.transliterateBenglish("tumi ki korcho")
+        assertTrue(res2.isSuccess)
+        assertEquals("তুমি কি করছো", res2.getOrNull())
+
+        val res3 = TranslationService.transliterateBenglish("ki korchis")
+        assertTrue(res3.isSuccess)
+        assertEquals("কি করছিস", res3.getOrNull())
+    }
+
+    @Test
+    fun testTranslateMethodWithBenglish() = runBlocking {
+        // Typing translation via translate() with sourceLang = "benglish" or targetLang = "bn"
+        val res1 = TranslationService.translate("ki korchis", "benglish", "bn")
+        assertTrue(res1.isSuccess)
+        assertEquals("কি করছিস", res1.getOrNull())
+
+        val res2 = TranslationService.translate("tumi ki korcho", "benglish", "bn")
+        assertTrue(res2.isSuccess)
+        assertEquals("তুমি কি করছো", res2.getOrNull())
+    }
+
+    @Test
+    fun testParseInputToolsResponseOffline() {
+        val sampleJson = """["SUCCESS",[["tumi kemon acho",["তুমি কেমন আছো","তুমি কেমন আছ"],[],{}]]]"""
+        val parsed = TranslationService.parseInputToolsResponse(sampleJson)
+        assertEquals("তুমি কেমন আছো", parsed)
+
+        val sampleJsonExact = """["SUCCESS",[["ki korcho",["কি করছো","কি করছ"],[],{}]]]"""
+        val parsedExact = TranslationService.parseInputToolsResponse(sampleJsonExact)
+        assertEquals("কি করছো", parsedExact)
     }
 }
