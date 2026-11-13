@@ -99,4 +99,21 @@ class VoiceTranslateTest {
         val parsedExact = TranslationService.parseInputToolsResponse(sampleJsonExact)
         assertEquals("কি করছো", parsedExact)
     }
+
+    @Test
+    fun testParseRomanizeResponseOffline() {
+        val sampleJson = """[[[null, null, null, "koto debo"]], null, "bn", null, null, null, 1]"""
+        val parsed = TranslationService.parseRomanizeResponse(sampleJson)
+        assertEquals("koto debo", parsed)
+
+        val sampleJson2 = """[[[null, null, null, "tumi kemon acho"]], null, "bn"]"""
+        val parsed2 = TranslationService.parseRomanizeResponse(sampleJson2)
+        assertEquals("tumi kemon acho", parsed2)
+    }
+
+    @Test
+    fun testBengaliToBenglishSupportedPair() {
+        val pairs = VoiceTranslateManager.SUPPORTED_PAIRS
+        assertTrue(pairs.any { it.sourceCode == "bn" && it.targetCode == "benglish" && it.displayLabel == "বাংলা ➔ Benglish" })
+    }
 }

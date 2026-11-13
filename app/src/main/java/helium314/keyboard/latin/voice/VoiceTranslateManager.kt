@@ -400,6 +400,27 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
 
     private fun translateAndCommitSpeech(speechText: String) {
         val pair = currentPair
+        if (pair.targetCode == "benglish") {
+            scope.launch {
+                val romanizeResult = TranslationService.romanizeBengali(speechText)
+                romanizeResult.fold(
+                    onSuccess = { benglishText ->
+                        val textToCommit = if (benglishText.isNotBlank()) benglishText else speechText
+                        barView?.setStatusText("✓ $textToCommit")
+                        latinIME.onTextInput(textToCommit)
+                        scheduleResetStatus(3000)
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "Speech romanize error", error)
+                        barView?.setStatusText("✓ $speechText")
+                        latinIME.onTextInput(speechText)
+                        scheduleResetStatus(3000)
+                    }
+                )
+            }
+            return
+        }
+
         if (pair.targetCode == "bn") {
             val hasBengali = speechText.any { it in '\u0980'..'\u09FF' }
             val hasLatin = speechText.any { it in 'a'..'z' || it in 'A'..'Z' }
@@ -522,6 +543,7 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
 
         val SUPPORTED_PAIRS = listOf(
             TranslationPair("benglish", "Benglish", "bn", "বাংলা"),
+            TranslationPair("bn", "বাংলা", "benglish", "Benglish"),
             TranslationPair("bn", "বাংলা", "en", "English"),
             TranslationPair("bn", "বাংলা", "hi", "हिन्दी"),
             TranslationPair("en", "English", "bn", "বাংলা"),

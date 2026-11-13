@@ -81,6 +81,61 @@ object TranslationService {
     }
 
     /**
+     * Romanizes Bengali script to Latin letters (Benglish / Banglish) using Google Translate transliteration endpoint (dt=rm).
+     * e.g. "কত দেবো" -> "koto debo", "তুমি কেমন আছো" -> "tumi kemon acho"
+     */
+    suspend fun romanizeBengali(text: String): Result<String> = withContext(Dispatchers.IO) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return@withContext Result.success("")
+
+        runCatching {
+            val encodedQuery = URLEncoder.encode(trimmed, "UTF-8")
+            val urlString = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=bn&tl=en&dt=rm&q=$encodedQuery"
+            val url = URL(urlString)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
+                setRequestProperty("User-Agent", "GoogleTranslate/6.28.0.RC05.420624444 (Linux; U; Android 12; Pixel 6)")
+                setRequestProperty("Accept", "*/*")
+            }
+
+            val responseCode = connection.responseCode
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw IllegalStateException("HTTP error $responseCode: ${connection.responseMessage}")
+            }
+
+            val responseText = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            parseRomanizeResponse(responseText)
+        }
+    }
+
+    internal fun parseRomanizeResponse(responseText: String): String {
+        val jsonArray = JSONArray(responseText.trim())
+        val segments = jsonArray.optJSONArray(0) ?: return ""
+        val sb = StringBuilder()
+        for (i in 0 until segments.length()) {
+            val segment = segments.optJSONArray(i) ?: continue
+            val roman = if (segment.length() > 3 && !segment.isNull(3)) {
+                segment.optString(3, "")
+            } else if (segment.length() > 2 && !segment.isNull(2)) {
+                segment.optString(2, "")
+            } else {
+                ""
+            }
+            if (roman.isNotEmpty()) {
+                if (sb.isNotEmpty() && !sb.endsWith(" ") && !roman.startsWith(" ")) {
+                    sb.append(" ")
+                }
+                sb.append(roman)
+            }
+        }
+        val result = sb.toString().trim()
+        if (result.isEmpty()) throw IllegalStateException("No romanization found")
+        return result
+    }
+
+    /**
      * Translates input text from [sourceLang] (e.g. "bn", "benglish", "en") to [targetLang] (e.g. "en", "hi", "bn").
      * When sourceLang is "benglish" or target is "bn" with Latin characters, performs Benglish-to-Bengali transliteration.
      * Returns Result with translated String or exception.
@@ -93,6 +148,15 @@ object TranslationService {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) {
             return@withContext Result.success("")
+        }
+
+        // Bengali script to Romanized Benglish (Banglish) transliteration:
+        if (targetLang == "benglish") {
+            val romanizeResult = romanizeBengali(trimmed)
+            if (romanizeResult.isSuccess && !romanizeResult.getOrNull().isNullOrBlank()) {
+                return@withContext romanizeResult
+            }
+            Log.w(TAG, "Romanization failed, attempting translation fallback: ${romanizeResult.exceptionOrNull()?.message}")
         }
 
         // Benglish / Banglish (Roman Bengali) to Bengali script transliteration:
@@ -111,10 +175,11 @@ object TranslationService {
         }
 
         // Map "benglish" to "auto" if falling back to standard translation endpoints
-        val effectiveSource = if (sourceLang == "benglish") "auto" else sourceLang
+        val effectiveSource = if (sourceLang == "benglish") "bn" else sourceLang
+        val effectiveTarget = if (targetLang == "benglish") "en" else targetLang
 
         // Try primary translation endpoint (clients5.google.com)
-        val primaryResult = tryClients5(trimmed, effectiveSource, targetLang)
+        val primaryResult = tryClients5(trimmed, effectiveSource, effectiveTarget)
         if (primaryResult.isSuccess) {
             return@withContext primaryResult
         }
@@ -122,7 +187,7 @@ object TranslationService {
         Log.w(TAG, "Primary translation failed, attempting fallback: ${primaryResult.exceptionOrNull()?.message}")
 
         // Try fallback translation endpoint (translate.googleapis.com)
-        val fallbackResult = tryGoogleApis(trimmed, effectiveSource, targetLang)
+        val fallbackResult = tryGoogleApis(trimmed, effectiveSource, effectiveTarget)
         if (fallbackResult.isSuccess) {
             return@withContext fallbackResult
         }
