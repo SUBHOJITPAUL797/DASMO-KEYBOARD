@@ -90,7 +90,7 @@ private object AppUpgrade {
         }
         // clear extracted dictionaries, in case updated version contains newer ones
         DictionaryInfoUtils.getCacheDirectories(context).forEach {
-            for (file in it.listFiles()!!) {
+            for (file in it.listFiles() ?: emptyArray()) {
                 if (!file.name.endsWith(DictionaryInfoUtils.USER_DICTIONARY_SUFFIX))
                     file.delete()
             }

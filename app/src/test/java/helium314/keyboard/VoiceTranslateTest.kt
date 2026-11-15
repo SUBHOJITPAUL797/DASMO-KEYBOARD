@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard
 
+import android.view.inputmethod.InputConnection
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.utils.ToolbarKey
 import helium314.keyboard.latin.utils.getCodeForToolbarKey
@@ -8,6 +9,7 @@ import helium314.keyboard.latin.voice.TranslationService
 import helium314.keyboard.latin.voice.VoiceTranslateManager
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,16 +29,16 @@ class VoiceTranslateTest {
     @Test
     fun testSupportedTranslationPairs() {
         val pairs = VoiceTranslateManager.SUPPORTED_PAIRS
-        assertTrue(pairs.isNotEmpty())
-        assertEquals("benglish", pairs[0].sourceCode)
-        assertEquals("bn", pairs[0].targetCode)
-        assertEquals("Benglish ➔ বাংলা", pairs[0].displayLabel)
+        assertEquals(2, pairs.size)
+        // Primary / Default (index 0): বাংলা ➔ Benglish
+        assertEquals("bn", pairs[0].sourceCode)
+        assertEquals("benglish", pairs[0].targetCode)
+        assertEquals("বাংলা ➔ Benglish", pairs[0].displayLabel)
 
-        // Check Bengali to English & Hindi pairs
-        assertTrue(pairs.any { it.sourceCode == "bn" && it.targetCode == "en" })
-        assertTrue(pairs.any { it.sourceCode == "bn" && it.targetCode == "hi" })
-        // Check English to Bengali pair
-        assertTrue(pairs.any { it.sourceCode == "en" && it.targetCode == "bn" })
+        // Secondary (index 1): Benglish ➔ বাংলা
+        assertEquals("benglish", pairs[1].sourceCode)
+        assertEquals("bn", pairs[1].targetCode)
+        assertEquals("Benglish ➔ বাংলা", pairs[1].displayLabel)
 
         assertEquals("pref_translate_pair_index", VoiceTranslateManager.PREF_TRANSLATE_PAIR_INDEX)
     }
@@ -115,5 +117,80 @@ class VoiceTranslateTest {
     fun testBengaliToBenglishSupportedPair() {
         val pairs = VoiceTranslateManager.SUPPORTED_PAIRS
         assertTrue(pairs.any { it.sourceCode == "bn" && it.targetCode == "benglish" && it.displayLabel == "বাংলা ➔ Benglish" })
+    }
+
+    @Test
+    fun testReplaceWordImmediateSpace() {
+        val (fakeIc, getText) = createFakeInputConnection("hello কত ")
+        val replaced = VoiceTranslateManager.replaceWord(fakeIc, "কত", "koto")
+        assertTrue(replaced)
+        assertEquals("hello koto ", getText())
+    }
+
+    @Test
+    fun testReplaceWordPreservingCharsAfter() {
+        // User typed 'd' after space before async conversion returned
+        val (fakeIc, getText) = createFakeInputConnection("hello কত d")
+        val replaced = VoiceTranslateManager.replaceWord(fakeIc, "কত", "koto")
+        assertTrue(replaced)
+        assertEquals("hello koto d", getText())
+    }
+
+    @Test
+    fun testReplaceWordBanglishToBengali() {
+        val (fakeIc, getText) = createFakeInputConnection("debo ")
+        val replaced = VoiceTranslateManager.replaceWord(fakeIc, "debo", "দেবো")
+        assertTrue(replaced)
+        assertEquals("দেবো ", getText())
+    }
+
+    @Test
+    fun testReplaceWordNoMatch() {
+        val (fakeIc, getText) = createFakeInputConnection("hello world ")
+        val replaced = VoiceTranslateManager.replaceWord(fakeIc, "missing", "koto")
+        assertFalse(replaced)
+        assertEquals("hello world ", getText())
+    }
+
+    @Test
+    fun testWordCache() {
+        val cache = HashMap<String, String>()
+        cache["কত"] = "koto"
+        cache["দেবো"] = "debo"
+        cache["tumi"] = "তুমি"
+
+        assertEquals("koto", cache["কত"])
+        assertEquals("debo", cache["দেবো"])
+        assertEquals("তুমি", cache["tumi"])
+        assertEquals(null, cache["unknown"])
+    }
+
+    private fun createFakeInputConnection(initialText: String): Pair<InputConnection, () -> String> {
+        var currentText = initialText
+        val proxy = java.lang.reflect.Proxy.newProxyInstance(
+            InputConnection::class.java.classLoader,
+            arrayOf(InputConnection::class.java)
+        ) { _, method, args ->
+            when (method.name) {
+                "getTextBeforeCursor" -> {
+                    val n = args[0] as Int
+                    if (currentText.length <= n) currentText else currentText.substring(currentText.length - n)
+                }
+                "deleteSurroundingText" -> {
+                    val before = args[0] as Int
+                    val newLength = (currentText.length - before).coerceAtLeast(0)
+                    currentText = currentText.substring(0, newLength)
+                    true
+                }
+                "commitText" -> {
+                    val textToCommit = args[0] as? CharSequence ?: ""
+                    currentText += textToCommit
+                    true
+                }
+                "getSelectedText" -> null
+                else -> null
+            }
+        } as InputConnection
+        return Pair(proxy, { currentText })
     }
 }

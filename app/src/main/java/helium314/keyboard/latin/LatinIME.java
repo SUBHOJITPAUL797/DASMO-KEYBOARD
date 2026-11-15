@@ -1263,6 +1263,11 @@ public class LatinIME extends InputMethodService implements
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event, mKeyboardSwitcher.getKeyboardCapsMode(), mHandler);
         updateStateAfterInputTransaction(completeInputTransaction);
         mKeyboardSwitcher.onEvent(event, getCurrentAutoCapsState(), getCurrentRecapitalizeState());
+        if (event.getCodePoint() == Constants.CODE_SPACE || event.getKeyCode() == Constants.CODE_SPACE) {
+            if (mVoiceTranslateManager != null && mVoiceTranslateManager.isActive()) {
+                mVoiceTranslateManager.onSpacePressed();
+            }
+        }
     }
 
     public void onTextInput(@Nullable String rawText) {

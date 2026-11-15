@@ -15,8 +15,10 @@ import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.prefs
 import helium314.keyboard.latin.utils.upgradeToolbarPrefs
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -28,20 +30,37 @@ class App : Application() {
         val ctx: Context = this
         DebugFlags.init(this) // needed by several other inits, so do it first
 
-        val scope = CoroutineScope(Dispatchers.Default)
+        val handler = CoroutineExceptionHandler { _, exception ->
+            Log.e("AppInit", "Init error in background job", exception)
+        }
+        val scope = CoroutineScope(Dispatchers.Default + SupervisorJob() + handler)
         // other inits can be in parallel, except what depends on SubtypeSettings
         val jobs = listOf(
             scope.launch {
-                SubtypeSettings.init(ctx)
-                RichInputMethodManager.init(ctx)
-                checkVersionUpgrade(ctx)
+                try {
+                    SubtypeSettings.init(ctx)
+                    RichInputMethodManager.init(ctx)
+                    checkVersionUpgrade(ctx)
+                } catch (e: Throwable) {
+                    Log.e("App", "Error in SubtypeSettings/Upgrade init", e)
+                }
             },
-            scope.launch { FoldableUtils.init(ctx) },
-            scope.launch { Settings.init(ctx) },
+            scope.launch {
+                try { FoldableUtils.init(ctx) } catch (e: Throwable) { Log.e("App", "Error in FoldableUtils", e) }
+            },
+            scope.launch {
+                try { Settings.init(ctx) } catch (e: Throwable) { Log.e("App", "Error in Settings init", e) }
+            },
             // upgrade toolbar on every debug apk start because we may work on adding a new toolbar key
-            scope.launch { if (BuildConfig.DEBUG) upgradeToolbarPrefs(prefs()) },
-            scope.launch { transferOldPinnedClips(ctx) }, // todo: remove in a few months, maybe end 2026
-            scope.launch { Defaults.initDynamicDefaults(ctx) }
+            scope.launch {
+                try { if (BuildConfig.DEBUG) upgradeToolbarPrefs(prefs()) } catch (e: Throwable) { Log.e("App", "Error in upgradeToolbarPrefs", e) }
+            },
+            scope.launch {
+                try { transferOldPinnedClips(ctx) } catch (e: Throwable) { Log.e("App", "Error in transferOldPinnedClips", e) }
+            },
+            scope.launch {
+                try { Defaults.initDynamicDefaults(ctx) } catch (e: Throwable) { Log.e("App", "Error in Defaults init", e) }
+            }
         )
         runBlocking { jobs.joinAll() } // word should be finished before anything else is started
 

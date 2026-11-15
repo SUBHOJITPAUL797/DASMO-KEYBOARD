@@ -51,6 +51,8 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
     private var speechRecognizer: SpeechRecognitionManager? = null
     private var debounceJob: Job? = null
 
+    val wordCache = HashMap<String, String>()
+
     var isActive: Boolean = false
         private set
 
@@ -337,6 +339,82 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
         scheduleResetStatus(2500)
     }
 
+    fun onSpacePressed() {
+        if (!isActive) return
+        val ic = latinIME.currentInputConnection ?: return
+        val textBefore = ic.getTextBeforeCursor(200, 0)?.toString() ?: ""
+        if (!textBefore.endsWith(" ")) return
+
+        val lastWord = textBefore.trimEnd().substringAfterLast(' ').substringAfterLast('\n').trim()
+        if (lastWord.isEmpty()) return
+
+        val pair = currentPair
+        val shouldConvert = when (pair.targetCode) {
+            "benglish" -> lastWord.any { it in '\u0980'..'\u09FF' }
+            "bn" -> lastWord.any { it in 'a'..'z' || it in 'A'..'Z' }
+            else -> false
+        }
+        if (!shouldConvert) return
+
+        // 1. Check in-memory word cache first
+        val cached = wordCache[lastWord]
+        if (cached != null) {
+            if (cached.isNotBlank() && cached != lastWord) {
+                replaceWordInInputConnection(ic, lastWord, cached)
+            }
+            return
+        }
+
+        // 2. Check if live preview already translated this word
+        if (cachedTranslatedText.isNotBlank() && cachedSourceText == lastWord) {
+            val converted = cachedTranslatedText
+            wordCache[lastWord] = converted
+            if (converted != lastWord) {
+                replaceWordInInputConnection(ic, lastWord, converted)
+            }
+            return
+        }
+
+        // 3. Fetch transliteration / romanization asynchronously
+        scope.launch {
+            val result = if (pair.targetCode == "benglish") {
+                TranslationService.romanizeBengali(lastWord)
+            } else {
+                TranslationService.transliterateBenglish(lastWord)
+            }
+
+            result.fold(
+                onSuccess = { convertedWord ->
+                    if (convertedWord.isNotBlank()) {
+                        wordCache[lastWord] = convertedWord
+                        if (convertedWord != lastWord) {
+                            replaceWordInInputConnection(ic, lastWord, convertedWord)
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Auto-convert on space error for '$lastWord'", error)
+                }
+            )
+        }
+    }
+
+    fun replaceWordInInputConnection(
+        ic: InputConnection,
+        lastWord: String,
+        convertedWord: String
+    ): Boolean {
+        val replaced = replaceWord(ic, lastWord, convertedWord)
+        if (replaced) {
+            cachedSourceText = ""
+            cachedTranslatedText = ""
+            barView?.setTranslateButtonVisible(false)
+            barView?.setStatusText("➔ $convertedWord")
+            scheduleResetStatus(2000)
+        }
+        return replaced
+    }
+
     private fun getRelevantText(ic: InputConnection): String {
         val selected = ic.getSelectedText(0)?.toString()
         if (!selected.isNullOrBlank()) {
@@ -500,7 +578,7 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
     private fun scheduleResetStatus(delayMillis: Long) {
         cancelResetStatusTimer()
         val runnable = Runnable {
-            if (isActive && speechRecognizer?.isListening != true) {
+            if (isActive && speechRecognizer?.isListening != true && barView != null) {
                 barView?.setStatusText(context.getString(R.string.voice_translate_status_tap_mic))
             }
         }
@@ -534,6 +612,7 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
         speechRecognizer?.destroy()
         speechRecognizer = null
         barView = null
+        wordCache.clear()
         scope.cancel()
     }
 
@@ -542,13 +621,27 @@ class VoiceTranslateManager(private val latinIME: LatinIME) : SpeechRecognitionM
         const val PREF_TRANSLATE_PAIR_INDEX = "pref_translate_pair_index"
 
         val SUPPORTED_PAIRS = listOf(
-            TranslationPair("benglish", "Benglish", "bn", "বাংলা"),
             TranslationPair("bn", "বাংলা", "benglish", "Benglish"),
-            TranslationPair("bn", "বাংলা", "en", "English"),
-            TranslationPair("bn", "বাংলা", "hi", "हिन्दी"),
-            TranslationPair("en", "English", "bn", "বাংলা"),
-            TranslationPair("hi", "हिन्दी", "bn", "বাংলা"),
-            TranslationPair("en", "English", "hi", "हिन्दी")
+            TranslationPair("benglish", "Benglish", "bn", "বাংলা")
         )
+
+        fun replaceWord(
+            ic: InputConnection,
+            lastWord: String,
+            convertedWord: String
+        ): Boolean {
+            val currentBefore = ic.getTextBeforeCursor(200, 0)?.toString() ?: ""
+            val targetPattern = "$lastWord "
+            val patternIndex = currentBefore.lastIndexOf(targetPattern)
+            if (patternIndex != -1) {
+                val charsAfterPattern = currentBefore.length - (patternIndex + targetPattern.length)
+                val totalDeleteLength = targetPattern.length + charsAfterPattern
+                val textToRecommit = "$convertedWord " + currentBefore.substring(patternIndex + targetPattern.length)
+                ic.deleteSurroundingText(totalDeleteLength, 0)
+                ic.commitText(textToRecommit, 1)
+                return true
+            }
+            return false
+        }
     }
 }
